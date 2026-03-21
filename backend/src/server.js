@@ -5,6 +5,10 @@ const { Pool } = pkg;
 
 const app = express();
 
+// Debug (temporary - remove later)
+console.log("DB_HOST:", process.env.DB_HOST);
+console.log("DB_USER:", process.env.DB_USER);
+
 const pool = new Pool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -19,8 +23,13 @@ app.get("/", (req, res) => {
 });
 
 app.get("/api/test-db", async (req, res) => {
-  const result = await pool.query("SELECT NOW()");
-  res.json(result.rows);
+  try {
+    const result = await pool.query("SELECT NOW()");
+    res.json(result.rows);
+  } catch (err) {
+    console.error("DB ERROR:", err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.listen(5000, "0.0.0.0", () => {
