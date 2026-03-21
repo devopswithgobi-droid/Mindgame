@@ -1,0 +1,82 @@
+name: Deploy Frontend & Backend to ECS
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+
+  FRONTEND_REPO: frontend-repo
+  BACKEND_REPO: backend-repo
+
+  CLUSTER_NAME: mindgame_cluster
+  FRONTEND_SERVICE: frontend-service
+  BACKEND_SERVICE: backend-service
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+
+    # ================= CHECKOUT =================
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    # ================= AWS LOGIN =================
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    # ================= ECR LOGIN =================
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    # ================= FRONTEND BUILD =================
+    - name: Build Frontend Docker Image
+      run: |
+        docker build -t frontend ./frontend
+
+    - name: Tag Frontend Image
+      run: |
+        docker tag frontend:latest $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$FRONTEND_REPO:latest
+
+    - name: Push Frontend Image to ECR
+      run: |
+        docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$FRONTEND_REPO:latest
+
+    # ================= BACKEND BUILD =================
+    - name: Build Backend Docker Image
+      run: |
+        docker build -t backend ./backend
+
+    - name: Tag Backend Image
+      run: |
+        docker tag backend:latest $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$BACKEND_REPO:latest
+
+    - name: Push Backend Image to ECR
+      run: |
+        docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$BACKEND_REPO:latest
+
+    # ================= DEPLOY TO ECS =================
+    - name: Deploy Frontend Service
+      run: |
+        aws ecs update-service \
+          --cluster $CLUSTER_NAME \
+          --service $FRONTEND_SERVICE \
+          --force-new-deployment
+
+    - name: Deploy Backend Service
+      run: |
+        aws ecs update-service \
+          --cluster $CLUSTER_NAME \
+          --service $BACKEND_SERVICE \
+          --force-new-deployment
