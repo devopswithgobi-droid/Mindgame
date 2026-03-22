@@ -1,11 +1,8 @@
-import express from "express";
-import pkg from "pg";
-
-const { Pool } = pkg;
+const express = require("express");
+const { Pool } = require("pg");
 
 const app = express();
 
-// Debug (temporary - remove later)
 console.log("DB_HOST:", process.env.DB_HOST);
 console.log("DB_USER:", process.env.DB_USER);
 
